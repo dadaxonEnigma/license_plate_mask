@@ -24,6 +24,18 @@ def order_points(pts):
 
     return rect
 
+def blur_region(img, poly):
+    poly = np.array(poly, dtype=np.int32)
+
+    mask = np.zeros(img.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, [poly], 255)
+
+    blurred = cv2.GaussianBlur(img, (35, 35), 0)
+
+    result = img.copy()
+    result[mask == 255] = blurred[mask == 255]
+    return result
+
 
 def prepare_plaque(plaque_img):
     if plaque_img is None:
@@ -66,6 +78,18 @@ def warp_and_blend(img, plaque, dst_pts):
     result = img * (1 - mask_norm) + warped_bgr * mask_norm
     return result.astype(np.uint8)
 
+def is_bad_quad(quad, min_side=8):
+    # Проверяем длины сторон
+    d01 = np.linalg.norm(quad[0] - quad[1])
+    d12 = np.linalg.norm(quad[1] - quad[2])
+    d23 = np.linalg.norm(quad[2] - quad[3])
+    d30 = np.linalg.norm(quad[3] - quad[0])
+
+    # Если какая-то сторона слишком мала → перспектива будет плохой
+    if min(d01, d12, d23, d30) < min_side:
+        return True
+
+    return False
 
 def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
 
@@ -97,7 +121,15 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
 
             quad = order_points(poly)
 
-            result_img = warp_and_blend(result_img, plaque, quad)
+            if is_bad_quad(quad):
+                print(f'Маска {i}: плохая геометрия')
+                result_img = blur_region(result_img, poly)
+                continue
+            try:
+                result_img = warp_and_blend(result_img,plaque, quad)
+            except Exception as e:
+                print(f'Плашка не смогла встать, применяем blur')
+                result_img = blur_region(result_img, poly)
 
         except Exception as e:
             print(f"Ошибка при обработке объекта {i}: {e}")
