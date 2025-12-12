@@ -96,7 +96,7 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
     img = cv2.imread(image_path)
     if img is None:
         print(f"Ошибка загрузки изображения: {image_path}")
-        return
+        return False  # номера не найдено, обработка невозможна
 
     result_img = img.copy()
 
@@ -108,26 +108,29 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
         device=0 if torch.cuda.is_available() else "cpu"
     )[0]
 
-    if pred.masks is None:
+    # === если модель не нашла номера ===
+    if pred.masks is None or len(pred.masks.xy) == 0:
         print("Номера не найдены.")
         cv2.imwrite(out_path, result_img)
-        return
+        return False
 
     masks = pred.masks.xy
+    found_any = False
 
     for i, poly in enumerate(masks):
+        found_any = True
         try:
             poly = np.array(poly, dtype=np.float32)
 
             quad = order_points(poly)
 
             if is_bad_quad(quad):
-                print(f'Маска {i}: плохая геометрия')
+                print(f'Маска {i}: плохая геометрия — blur')
                 result_img = blur_region(result_img, poly)
                 continue
             try:
-                result_img = warp_and_blend(result_img,plaque, quad)
-            except Exception as e:
+                result_img = warp_and_blend(result_img, plaque, quad)
+            except Exception:
                 print(f'Плашка не смогла встать, применяем blur')
                 result_img = blur_region(result_img, poly)
 
@@ -137,6 +140,8 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
 
     cv2.imwrite(out_path, result_img)
     print(f"Сохранено: {out_path}")
+    return found_any
+
 
 
 def process_folder(folder_path, model_path, plaque_path, output_dir):
@@ -146,7 +151,13 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
 
     folder = Path(folder_path)
     output_dir = Path(output_dir)
-    output_dir.mkdir(exist_ok=True)
+
+    # создаём подпапки
+    processed_dir = output_dir / "processed"
+    no_number_dir = output_dir / "no_number"
+
+    processed_dir.mkdir(parents=True, exist_ok=True)
+    no_number_dir.mkdir(parents=True, exist_ok=True)
 
     images = [p for p in folder.iterdir() if p.suffix.lower() in [".jpg", ".png", ".jpeg", ".webp"]]
 
@@ -155,14 +166,23 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
     for idx, img_path in enumerate(images, start=1):
         print(f"[{idx}/{len(images)}] {img_path.name}")
 
-        out_path = output_dir / f"{img_path.stem}_masked.jpg"
+        # сначала пишем временно в память, потом уже решаем куда сохранить
+        temp_out = output_dir / f"{img_path.stem}_masked_temp.jpg"
 
-        mask_all_plates(
+        found = mask_all_plates(
             image_path=str(img_path),
             model=model,
             plaque=plaque,
-            out_path=str(out_path)
+            out_path=str(temp_out)
         )
+
+        # переносим в нужную папку
+        if found:
+            final_path = processed_dir / f"{img_path.stem}_processed.jpg"
+        else:
+            final_path = no_number_dir / f"{img_path.stem}_no_number.jpg"
+
+        temp_out.rename(final_path)
 
     print("Готово.")
 
