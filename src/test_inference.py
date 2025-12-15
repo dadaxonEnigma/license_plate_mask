@@ -24,6 +24,7 @@ def order_points(pts):
 
     return rect
 
+
 def blur_region(img, poly):
     poly = np.array(poly, dtype=np.int32)
 
@@ -46,6 +47,7 @@ def prepare_plaque(plaque_img):
         plaque_img = cv2.merge([plaque_img, alpha])
 
     return plaque_img
+
 
 def warp_and_blend(img, plaque, dst_pts):
     h, w = plaque.shape[:2]
@@ -78,25 +80,25 @@ def warp_and_blend(img, plaque, dst_pts):
     result = img * (1 - mask_norm) + warped_bgr * mask_norm
     return result.astype(np.uint8)
 
+
 def is_bad_quad(quad, min_side=8):
-    # Проверяем длины сторон
     d01 = np.linalg.norm(quad[0] - quad[1])
     d12 = np.linalg.norm(quad[1] - quad[2])
     d23 = np.linalg.norm(quad[2] - quad[3])
     d30 = np.linalg.norm(quad[3] - quad[0])
 
-    # Если какая-то сторона слишком мала → перспектива будет плохой
     if min(d01, d12, d23, d30) < min_side:
         return True
 
     return False
 
-def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
+
+def mask_all_plates(image_path, model, plaque, out_path, conf=0.8):
 
     img = cv2.imread(image_path)
     if img is None:
         print(f"Ошибка загрузки изображения: {image_path}")
-        return False  # номера не найдено, обработка невозможна
+        return False  
 
     result_img = img.copy()
 
@@ -108,7 +110,6 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
         device=0 if torch.cuda.is_available() else "cpu"
     )[0]
 
-    # === если модель не нашла номера ===
     if pred.masks is None or len(pred.masks.xy) == 0:
         print("Номера не найдены.")
         cv2.imwrite(out_path, result_img)
@@ -143,7 +144,6 @@ def mask_all_plates(image_path, model, plaque, out_path, conf=0.25):
     return found_any
 
 
-
 def process_folder(folder_path, model_path, plaque_path, output_dir):
 
     model = YOLO(model_path)
@@ -152,7 +152,6 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
     folder = Path(folder_path)
     output_dir = Path(output_dir)
 
-    # создаём подпапки
     processed_dir = output_dir / "processed"
     no_number_dir = output_dir / "no_number"
 
@@ -166,7 +165,6 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
     for idx, img_path in enumerate(images, start=1):
         print(f"[{idx}/{len(images)}] {img_path.name}")
 
-        # сначала пишем временно в память, потом уже решаем куда сохранить
         temp_out = output_dir / f"{img_path.stem}_masked_temp.jpg"
 
         found = mask_all_plates(
@@ -176,7 +174,6 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
             out_path=str(temp_out)
         )
 
-        # переносим в нужную папку
         if found:
             final_path = processed_dir / f"{img_path.stem}_processed.jpg"
         else:
@@ -188,12 +185,12 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
 
 
 if __name__ == "__main__":
-    MODEL_PATH = "../notebooks/runs/segment/train/weights/best.pt"
+    MODEL_PATH = "../notebooks/runs/segment/train/weights/best (4).pt"
     PLAQUE_PATH = "../assets/overlay.png"
 
     process_folder(
-        folder_path="../test_images",
+        folder_path="../test_images/new_cars",
         model_path=MODEL_PATH,
         plaque_path=PLAQUE_PATH,
-        output_dir="../outputs"
+        output_dir="../outputs2"
     )
