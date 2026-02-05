@@ -1,0 +1,13 @@
+# Core dependencies
+ultralytics>=8.0.0
+torch>=2.0.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Django integration (optional, for plate_marker_service)
+Django>=4.2.0
+
+# Development and training
+jupyter>=1.0.0
+matplotlib>=3.7.0

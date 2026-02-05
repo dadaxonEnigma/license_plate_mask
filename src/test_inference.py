@@ -185,11 +185,11 @@ def process_folder(folder_path, model_path, plaque_path, output_dir):
 
 
 if __name__ == "__main__":
-    MODEL_PATH = "../notebooks/runs/segment/train/weights/best (4).pt"
-    PLAQUE_PATH = "../assets/overlay.png"
+    MODEL_PATH = "../notebooks/runs/segment/train/weights/best.pt"
+    PLAQUE_PATH = "../assets/autouz.png"
 
     process_folder(
-        folder_path="../test_images/new_cars",
+        folder_path="../test_images",
         model_path=MODEL_PATH,
         plaque_path=PLAQUE_PATH,
         output_dir="../outputs2"

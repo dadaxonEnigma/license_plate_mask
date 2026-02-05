@@ -1,4 +1,37 @@
+# Project data directories
 test_images
 outputs
+outputs2
 dataset
 assets
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Claude Code
+.claude/
+
+# Training outputs (keep only args.yaml and best.pt)
+notebooks/runs/segment/train/*.jpg
+notebooks/runs/segment/train/*.png
+
+# Environment
+.env
+*.log
